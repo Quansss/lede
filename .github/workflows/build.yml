@@ -1,5 +1,4 @@
-name: Build CR6606 with sharkos
-
+name: Build CR6606 完整版
 on:
   workflow_dispatch:
 
@@ -13,53 +12,45 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt install build-essential libncurses-dev bison flex libssl-dev libelf-dev python3 -y
+      - name: 安装依赖
+        run: sudo apt update && sudo apt install build-essential libncurses-dev bison flex libssl-dev libelf-dev python3 -y
 
-      - name: Clone LEDE source
-        run: |
-          git clone https://github.com/coolsnowwolf/lede lede --depth 1
+      - name: 拉取 LEDE 源码
+        run: git clone https://gitee.com/coolsnowwolf/lede.git lede --depth 1
 
-      - name: Add SSR+ / PassWall2 / FRPC
+      - name: 拉取插件（国内镜像，无墙）
         run: |
-          cd lede
-          git clone https://github.com/fw876/helloworld package/helloworld
-          git clone https://github.com/xiaorouji/openwrt-passwall2 package/passwall2
-
-      - name: Update feeds
+          cd lede/package
+          git clone https://gitee.com/kooljun/helloworld.git
+          git clone https://gitee.com/kooljun/passwall2.git
+          
+      - name: 更新 feeds
         run: |
           cd lede
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: Generate CR6606 config
+      - name: 生成 CR6606 配置
         run: |
           cd lede
           cat > .config << EOF
-          CONFIG_TARGET_ramips=y
-          CONFIG_TARGET_ramips_mt7621=y
-          CONFIG_TARGET_ramips_mt7621_DEVICE_xiaomi_mi-router-cr6606=y
-          CONFIG_PACKAGE_luci-app-ssr-plus=y
-          CONFIG_PACKAGE_luci-app-passwall2=y
-          CONFIG_PACKAGE_luci-app-frpc=y
-          # 精简多余软件
-          CONFIG_PACKAGE_luci-app-qbittorrent is not set
-          CONFIG_PACKAGE_luci-app-transmission is not set
-          CONFIG_PACKAGE_luci-app-zerotier is not set
-          CONFIG_PACKAGE_luci-app-sqm is not set
-          EOF
+CONFIG_TARGET_ramips=y
+CONFIG_TARGET_ramips_mt7621=y
+CONFIG_TARGET_ramips_mt7621_DEVICE_xiaomi_mi-router-cr6606=y
+CONFIG_PACKAGE_luci-app-ssr-plus=y
+CONFIG_PACKAGE_luci-app-passwall2=y
+CONFIG_PACKAGE_luci-app-frpc=y
+EOF
           make defconfig
 
-      - name: Download packages
+      - name: 下载依赖
         run: cd lede && make download -j8
 
-      - name: Compile firmware
+      - name: 开始编译
         run: cd lede && make -j4
 
-      - name: Upload firmware
+      - name: 上传固件
         uses: actions/upload-artifact@v4
         with:
-          name: cr6606-with-plugins
+          name: cr6606-final
           path: lede/bin/targets/ramips/mt7621/*
