@@ -1,0 +1,57 @@
+name: Build CR6606 南京迅鲨云创科技有限公司
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt update && sudo apt install build-essential libncurses-dev bison flex libssl-dev libelf-dev python3 -y
+
+      - name: Clone LEDE (Gitee 国内镜像)
+        run: git clone https://gitee.com/coolsnowwolf/lede.git lede --depth 1
+
+      - name: Add plugins (国内镜像无墙)
+        run: |
+          cd lede/package
+          git clone https://gitee.com/kooljun/helloworld.git
+          git clone https://gitee.com/kooljun/passwall2.git
+
+      - name: Update feeds
+        run: |
+          cd lede
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Generate CR6606 config
+        run: |
+          cd lede
+          cat > .config << EOF
+CONFIG_TARGET_ramips=y
+CONFIG_TARGET_ramips_mt7621=y
+CONFIG_TARGET_ramips_mt7621_DEVICE_xiaomi_mi-router-cr6606=y
+CONFIG_PACKAGE_luci-app-ssr-plus=y
+CONFIG_PACKAGE_luci-app-passwall2=y
+CONFIG_PACKAGE_luci-app-frpc=y
+EOF
+          make defconfig
+
+      - name: Download packages
+        run: cd lede && make download -j8
+
+      - name: Compile firmware
+        run: cd lede && make -j4
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: cr6606_complete
+          path: lede/bin/targets/ramips/mt7621/*
