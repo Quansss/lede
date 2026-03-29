@@ -1,4 +1,4 @@
-name: Build CR6606 完整版
+name: Build CR6606 sharkos
 on:
   workflow_dispatch:
 
